@@ -1,0 +1,56 @@
+[
+  {
+    "id": "demo-milk",
+    "name": "奶盖",
+    "breed": "暖橘长毛",
+    "intro": "小院的温柔担当。喜欢窝在窗边晒太阳，听到零食袋的声音就会瞬间出现。今天也在认真地当一朵云。",
+    "image": "/cats/milk.jpg",
+    "createdAt": 0,
+    "demo": true
+  },
+  {
+    "id": "demo-orange",
+    "name": "橘子",
+    "breed": "小橘猫",
+    "intro": "一只把饭饭放在第一位的小橘。特长是翻肚皮和撒娇，人生理想是拥有吃不完的小鱼干。",
+    "image": "/cats/sesame.jpg",
+    "createdAt": 0,
+    "demo": true
+  },
+  {
+    "id": "demo-sesame",
+    "name": "芝麻",
+    "breed": "奶牛猫",
+    "intro": "看起来有点酷，其实是个粘人精。最喜欢跟着你从客厅走到厨房，再假装只是路过。",
+    "image": "/cats/orange.jpg",
+    "createdAt": 0,
+    "demo": true
+  },
+  {
+    "id": "demo-cookie",
+    "name": "曲奇",
+    "breed": "狸花猫",
+    "intro": "每天都有新发现的小探险家。纸箱是城堡，沙发是山丘，你是最好的探险搭子。",
+    "image": "/cats/cookie.jpg",
+    "createdAt": 0,
+    "demo": true
+  },
+  {
+    "id": "demo-cloud",
+    "name": "云朵",
+    "breed": "狸花猫",
+    "intro": "一团会呼噜的柔软。喜欢慢慢眨眼，喜欢在你看书时霸占书页，也喜欢安安静静陪着你。",
+    "image": "/cats/cloud.jpg",
+    "createdAt": 0,
+    "demo": true
+  },
+  {
+    "id": "demo-pudding",
+    "name": "布丁",
+    "breed": "亲人小猫",
+    "intro": "爱被挠下巴的小开心果。喜欢逗猫棒和追光影，每天最重要的任务就是让家里充满笑声。",
+    "image": "/cats/pudding.jpg",
+    "createdAt": 0,
+    "demo": true
+  }
+]

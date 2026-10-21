@@ -1,0 +1,6 @@
+project_id = "wanli"
+
+[functions.miaomiao-api]
+# Public reads and CORS preflights are allowed. Every POST verifies its user token
+# against Supabase Auth inside handler.mjs before any privileged database operation.
+verify_jwt = false
