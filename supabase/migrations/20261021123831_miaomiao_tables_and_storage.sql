@@ -41,4 +41,3 @@ grant all on public.miaomiao_cats,public.miaomiao_comments,public.miaomiao_uploa
 insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
 values ('miaomiao-photos','miaomiao-photos',true,8388608,array['image/jpeg','image/png','image/webp']);
 -- No storage.objects upload/update/delete policies are added for browser roles.
-
