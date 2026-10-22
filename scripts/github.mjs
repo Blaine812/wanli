@@ -32,6 +32,19 @@ try{
  }else if(command==='domain-status'){
   const saved=await api('/pages');
   console.log(JSON.stringify({domain:saved.cname,url:saved.html_url,httpsEnforced:saved.https_enforced,certificate:saved.https_certificate||null}));
+ }else if(command==='refresh-domain-certificate'){
+  const domain='miaomiaojiao.cn',current=await api('/pages');
+  if(current.cname!==domain)throw new Error('Expected custom domain is not configured.');
+  if(current.https_enforced||current.https_certificate?.state&&!['errored','bad_authz','destroyed'].includes(current.https_certificate.state)){
+   console.log(JSON.stringify({unchanged:true,certificate:current.https_certificate||null}));
+  }else{
+   await api('/pages',{method:'PUT',body:JSON.stringify({cname:null})});
+   try{await api('/pages',{method:'PUT',body:JSON.stringify({cname:domain})});}
+   catch{await api('/pages',{method:'PUT',body:JSON.stringify({cname:domain})});}
+   const saved=await api('/pages');
+   if(saved.cname!==domain)throw new Error('Custom domain must be restored.');
+   console.log(JSON.stringify({domain:saved.cname,restarted:true,certificate:saved.https_certificate||null}));
+  }
  }else if(command==='domain-health'){
   console.log(JSON.stringify(await api('/pages/health')));
  }else if(command==='enable-https'){
