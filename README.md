@@ -2,6 +2,8 @@
 
 可爱萌宠风格的猫咪照片分享网站，使用GitHub Pages托管页面、Supabase保存图片、介绍和留言。所有访客都能上传，无需填写注册资料。
 
+线上网址：[miaomiaojiao.cn](https://miaomiaojiao.cn/)。源码仓库：[Blaine812/wanli](https://github.com/Blaine812/wanli)。
+
 ## 已实现
 
 - 猫咪照片上传（JPG、PNG、WebP，最大8MB）、名字、标签和介绍。

@@ -1,12 +1,14 @@
 import assert from 'node:assert/strict';
 const url='https://bkjdgwbrxrwgluxjuhpa.supabase.co';
 const key='sb_publishable_WBypVF6NynmLYSuM2FZBcg_Idf_3kBm';
-const headers={apikey:key,Origin:'https://blaine812.github.io'};
+const origin=process.argv[2]||'https://miaomiaojiao.cn';
+const headers={apikey:key,Origin:origin};
 const base=url+'/functions/v1/miaomiao-api';
 const health=await fetch(base+'/health',{headers});assert.equal(health.status,200,await health.text());
-const gallery=await fetch(base+'/cats',{headers});assert.equal(gallery.status,200);const data=await gallery.json();assert.ok(data.cats.length>=6);assert.equal(gallery.headers.get('access-control-allow-origin'),'https://blaine812.github.io');
+const gallery=await fetch(base+'/cats',{headers});assert.equal(gallery.status,200);const data=await gallery.json();assert.ok(data.cats.length>=6);assert.equal(gallery.headers.get('access-control-allow-origin'),origin);
+const preflight=await fetch(base+'/cats',{method:'OPTIONS',headers:{...headers,'Access-Control-Request-Method':'POST','Access-Control-Request-Headers':'authorization,apikey,content-type'}});assert.equal(preflight.status,204);assert.equal(preflight.headers.get('access-control-allow-origin'),origin);
 const comments=await fetch(base+'/comments?catId=courtyard',{headers});assert.equal(comments.status,200);
 const unauthenticated=await fetch(base+'/comments',{method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({nickname:'test',body:'test'})});assert.equal(unauthenticated.status,401);
 const denied=await fetch(url+'/rest/v1/miaomiao_cats?select=id',{headers:{apikey:key}});assert.ok([401,403].includes(denied.status));
 const settings=await (await fetch(url+'/auth/v1/settings',{headers:{apikey:key}})).json();assert.equal(settings.external?.anonymous_users,true);
-console.log(JSON.stringify({health:'ok',gallery:data.total,comments:'ok',anonymousSessions:'enabled',unauthenticatedWrites:'denied',directTableAccess:'denied'}));
+console.log(JSON.stringify({origin,health:'ok',gallery:data.total,comments:'ok',uploadPreflight:'allowed',anonymousSessions:'enabled',unauthenticatedWrites:'denied',directTableAccess:'denied'}));

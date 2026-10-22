@@ -32,6 +32,28 @@ try{
  }else if(command==='domain-status'){
   const saved=await api('/pages');
   console.log(JSON.stringify({domain:saved.cname,url:saved.html_url,httpsEnforced:saved.https_enforced,certificate:saved.https_certificate||null}));
+ }else if(command==='recheck-domain'){
+  const current=await api('/pages');
+  if(current.cname!=='miaomiaojiao.cn')throw new Error('Expected custom domain is not configured.');
+  await api('/pages',{method:'PUT',body:JSON.stringify({cname:current.cname,https_enforced:current.https_enforced})});
+  const saved=await api('/pages');console.log(JSON.stringify({domain:saved.cname,httpsEnforced:saved.https_enforced,certificate:saved.https_certificate||null}));
+ }else if(command==='refresh-www-certificate'){
+  const domain='miaomiaojiao.cn',current=await api('/pages');
+  if(current.cname!==domain)throw new Error('Expected custom domain is not configured.');
+  if(current.https_certificate?.domains?.includes('www.'+domain)){
+   console.log(JSON.stringify({unchanged:true,certificate:current.https_certificate}));
+  }else{
+   const {Resolver}=await import('node:dns/promises');
+   const resolver=new Resolver({timeout:5000,tries:1});resolver.setServers(['223.5.5.5']);
+   const [addresses,aliases]=await Promise.all([resolver.resolve4(domain),resolver.resolveCname('www.'+domain)]);
+   const expected=['185.199.108.153','185.199.109.153','185.199.110.153','185.199.111.153'];
+   if(addresses.length!==4||addresses.some(ip=>!expected.includes(ip))||aliases.length!==1||aliases[0].replace(/\.$/,'').toLowerCase()!=='blaine812.github.io')throw new Error('Both DNS records must be correct before restarting the certificate.');
+   await api('/pages',{method:'PUT',body:JSON.stringify({cname:null})});
+   try{await api('/pages',{method:'PUT',body:JSON.stringify({cname:domain})});}
+   catch{await api('/pages',{method:'PUT',body:JSON.stringify({cname:domain})});}
+   const saved=await api('/pages');if(saved.cname!==domain)throw new Error('Custom domain must be restored.');
+   console.log(JSON.stringify({domain:saved.cname,restarted:true,httpsEnforced:saved.https_enforced,certificate:saved.https_certificate||null}));
+  }
  }else if(command==='refresh-domain-certificate'){
   const domain='miaomiaojiao.cn',current=await api('/pages');
   if(current.cname!==domain)throw new Error('Expected custom domain is not configured.');
