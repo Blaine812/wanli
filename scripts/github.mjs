@@ -22,6 +22,21 @@ try{
   let current;try{current=await api('/pages');}catch(e){if(e.status!==404)throw e;}
   const result=await api('/pages',{method:current?'PUT':'POST',body:JSON.stringify({build_type:'workflow'})});
   console.log(JSON.stringify({enabled:true,url:result?.html_url||current?.html_url||`https://blaine812.github.io/wanli/`}));
+ }else if(command==='bind-domain'){
+  const domain='miaomiaojiao.cn',current=await api('/pages');
+  if(current.cname&&current.cname!==domain)throw new Error('A different custom domain is already configured; no changes made.');
+  if(current.cname!==domain)await api('/pages',{method:'PUT',body:JSON.stringify({cname:domain})});
+  const saved=await api('/pages');
+  if(saved.cname!==domain)throw new Error('Custom domain was not saved.');
+  console.log(JSON.stringify({domain:saved.cname,url:saved.html_url,httpsEnforced:saved.https_enforced,certificate:saved.https_certificate?.state||null}));
+ }else if(command==='domain-status'){
+  const saved=await api('/pages');
+  console.log(JSON.stringify({domain:saved.cname,url:saved.html_url,httpsEnforced:saved.https_enforced,certificate:saved.https_certificate||null}));
+ }else if(command==='enable-https'){
+  const current=await api('/pages');
+  if(current.cname!=='miaomiaojiao.cn')throw new Error('Expected custom domain is not configured.');
+  await api('/pages',{method:'PUT',body:JSON.stringify({https_enforced:true})});
+  const saved=await api('/pages');console.log(JSON.stringify({domain:saved.cname,httpsEnforced:saved.https_enforced}));
  }else if(command==='dispatch'){
   await api('/actions/workflows/pages.yml/dispatches',{method:'POST',body:JSON.stringify({ref:'main'})});console.log('GitHub Pages build requested.');
  }else if(command==='runs'){
