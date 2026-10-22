@@ -32,6 +32,8 @@ try{
  }else if(command==='domain-status'){
   const saved=await api('/pages');
   console.log(JSON.stringify({domain:saved.cname,url:saved.html_url,httpsEnforced:saved.https_enforced,certificate:saved.https_certificate||null}));
+ }else if(command==='domain-health'){
+  console.log(JSON.stringify(await api('/pages/health')));
  }else if(command==='enable-https'){
   const current=await api('/pages');
   if(current.cname!=='miaomiaojiao.cn')throw new Error('Expected custom domain is not configured.');
