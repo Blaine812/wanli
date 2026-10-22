@@ -1,3 +1,4 @@
+import {createCommunityHandler,communityRoutes} from './community.mjs';
 const MB=1024*1024;
 class ApiError extends Error{constructor(status,message){super(message);this.status=status;}}
 const fail=(status,message)=>{throw new ApiError(status,message);};
@@ -37,7 +38,9 @@ export function createHandler({backend,demos,allowedOrigins,ipSalt}){
   return Array.from(new Uint8Array(bytes),b=>b.toString(16).padStart(2,'0')).join('');
  }
  async function rpc(name,args){const {data,error}=await backend.rpc(name,args);if(error)dbError(error);return data;}
- const catDto=cat=>{const {imagePath,...fields}=cat;return {...fields,image:backend.photoUrl(imagePath)};};
+ const catDto=cat=>{const {imagePath,imagePaths,...fields}=cat;return {...fields,image:backend.photoUrl(imagePath),images:(imagePaths||[imagePath]).map(backend.photoUrl)};};
+ const commentDto=comment=>{const {imagePaths,...fields}=comment;return {...fields,images:(imagePaths||[]).map(backend.photoUrl)};};
+ const community=createCommunityHandler({backend,rpc,fail,readBody:limitedBody,imageMime,catDto,commentDto,demos});
  return async function handle(req){
   const origin=req.headers.get('origin');
   const headers={'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','Vary':'Origin','X-Content-Type-Options':'nosniff'};
@@ -50,25 +53,28 @@ export function createHandler({backend,demos,allowedOrigins,ipSalt}){
   try{
    const url=new URL(req.url);const marker='/miaomiao-api';const at=url.pathname.indexOf(marker);
    const route=at<0?url.pathname:url.pathname.slice(at+marker.length)||'/';
-   if(req.method==='GET'&&route==='/health')return response({status:'ok'});
+   if(req.method==='GET'&&route==='/health')return response({status:'ok',version:2});
+   if(req.method==='GET'&&route==='/state')return response(await rpc('miaomiao_community_state',{p_actor:null}));
+   if(req.method==='GET'&&route==='/cat-options')return response({cats:[...await rpc('miaomiao_cat_options',{}),...demos.map(({id,name,breed})=>({id,name,breed}))]});
    if(req.method==='GET'&&route==='/cats'){
     const offset=Number(url.searchParams.get('offset')||0);if(!Number.isSafeInteger(offset)||offset<0||offset>10000000)fail(400,'相册页码不正确');
     const data=await rpc('miaomiao_gallery',{p_offset:offset});
     const cats=data.cats.map(catDto);
-    if(data.nextOffset===null)cats.push(...demos.map(cat=>({...cat,commentCount:Number(data.demoCounts[cat.id]||0)})));
+    if(data.nextOffset===null)cats.push(...demos.map(cat=>({...cat,images:[cat.image,...(data.demoPhotos?.[cat.id]||[]).map(backend.photoUrl)],commentCount:Number(data.demoCounts[cat.id]||0)})));
     return response({cats,total:Number(data.uploadedTotal)+demos.length,nextOffset:data.nextOffset});
    }
    if(req.method==='GET'&&route==='/comments'){
     const id=url.searchParams.get('catId')||'courtyard';if(id.length>60)fail(400,'小猫档案地址不正确');
-    return response(await rpc('miaomiao_comments_get',{p_cat_id:id}));
+    const data=await rpc('miaomiao_comments_get',{p_cat_id:id});return response({comments:data.comments.map(commentDto)});
    }
    if(req.method!=='POST')return response({error:'没有找到这个地址'},404);
-   if(route!=='/cats'&&route!=='/comments')return response({error:'没有找到这个地址'},404);
+   if(route!=='/cats'&&route!=='/comments'&&!communityRoutes.has(route))return response({error:'没有找到这个地址'},404);
    const authorization=req.headers.get('authorization')||'';
    if(!/^Bearer [^\s]+$/.test(authorization))fail(401,'请刷新页面后再试');
    const {user,error}=await backend.user(authorization.slice(7));
    if(error||!user?.id||!user?.aud||user.aud!=='authenticated')fail(401,'访客会话已过期，请刷新页面后再试');
    const hash=await ipHash(req);
+   if(communityRoutes.has(route)){const result=await community(req,route,user.id,hash);return response(result.body,result.status||200);}
    if(route==='/comments'){
     if(!req.headers.get('content-type')?.startsWith('application/json'))fail(415,'留言格式不正确');
     const raw=await limitedBody(req,8192);let value;try{value=JSON.parse(new TextDecoder().decode(raw));}catch{fail(400,'留言格式不正确');}
