@@ -35,23 +35,22 @@ export function LikeButton({name,count,onClick}:{name:string;count:number;onClic
 }
 const blessingIcons={shield:ShieldCheck,coins:Coins,book:BookOpen,leaf:Leaf,sun:Sun,heart:Heart};
 export function CatShrine({state,cats,onOffer,onAssignRecipient}:{state:SharedState;cats:Cat[];onOffer:()=>Promise<Award|null>;onAssignRecipient:(awardId:string,recipient:{name?:string;catId?:string})=>Promise<Award>}){
- const progress=state.ritual;
  const [catOptions,setCatOptions]=useState<Pick<Cat,'id'|'name'|'breed'>[]>(cats);
  const [name,setName]=useState(''),[catId,setCatId]=useState(''),[recipientBusy,setRecipientBusy]=useState(false),[recipientError,setRecipientError]=useState(''),[offering,setOffering]=useState(false),[activeAward,setActiveAward]=useState<Award|null>(null),[feedIndex,setFeedIndex]=useState(0);
  useEffect(()=>{const timer=setInterval(()=>setFeedIndex(index=>index+1),4500);return()=>clearInterval(timer);},[]);
  const [puff,setPuff]=useState(0),[blessingOpen,setBlessingOpen]=useState(false),[activeBlessing,setActiveBlessing]=useState<Blessing|null>(null);
  useEffect(()=>{if(!blessingOpen)return;let active=true;listCatOptions().then(options=>{if(active)setCatOptions(options);}).catch(()=>{});return()=>{active=false;};},[blessingOpen]);
- const blessingDialog=useRef<HTMLDialogElement>(null);
- const lastBlessing=getBlessing(state.lastAward?.blessingId||progress.lastBlessingId);
+ const blessingDialog=useRef<HTMLDialogElement>(null),offerInFlight=useRef(false),finishInFlight=useRef(false);
+ const lastBlessing=getBlessing(state.lastAward?.blessingId);
  const feedEntry=state.feed.length?state.feed[feedIndex%state.feed.length]:null;
  useEffect(()=>{
   if(!blessingOpen){blessingDialog.current?.close();return;}
   const previous=document.body.style.overflow;document.body.style.overflow='hidden';
-  blessingDialog.current?.showModal();
+  if(blessingDialog.current?.isConnected&&!blessingDialog.current.open)blessingDialog.current.showModal();
   return()=>{document.body.style.overflow=previous;};
  },[blessingOpen]);
- async function offer(){if(offering)return;setOffering(true);setPuff(value=>value+1);try{const award=await onOffer();if(award){setName('');setCatId('');setRecipientError('');setActiveAward(award);setActiveBlessing(getBlessing(award.blessingId));setBlessingOpen(true);}}finally{setOffering(false);}}
- async function finish(skip=false){if(recipientBusy)return;if(activeAward?.recipientSet!==false){setBlessingOpen(false);return;}setRecipientBusy(true);setRecipientError('');try{const award=await onAssignRecipient(activeAward.id,skip?{}:catId?{catId}:{name});setActiveAward(award);setBlessingOpen(false);}catch(error){setRecipientError(error instanceof Error?error.message:'祝福暂时没有送出，请重试');}finally{setRecipientBusy(false);}} 
+ async function offer(){if(offerInFlight.current||blessingOpen)return;offerInFlight.current=true;setOffering(true);setPuff(value=>value+1);try{const award=await onOffer();if(award){setName('');setCatId('');setRecipientError('');setActiveAward(award);setActiveBlessing(getBlessing(award.blessingId));setBlessingOpen(true);}}finally{offerInFlight.current=false;setOffering(false);}}
+ async function finish(skip=false){if(finishInFlight.current)return;if(activeAward?.recipientSet!==false){setBlessingOpen(false);return;}finishInFlight.current=true;setRecipientBusy(true);setRecipientError('');try{const award=await onAssignRecipient(activeAward.id,skip?{}:catId?{catId}:{name});setActiveAward(award);setBlessingOpen(false);}catch(error){setRecipientError(error instanceof Error?error.message:'祝福暂时没有送出，请重试');}finally{finishInFlight.current=false;setRecipientBusy(false);}}
  function revisit(){if(lastBlessing){setName('');setCatId('');setRecipientError('');setActiveAward(state.lastAward);setActiveBlessing(lastBlessing);setBlessingOpen(true);}}
  const BlessingIcon=activeBlessing?blessingIcons[activeBlessing.icon]:Sparkles;
  return <section id="cat-god" className="shrine section-wrap" aria-labelledby="cat-god-title">
@@ -77,8 +76,8 @@ export function CatShrine({state,cats,onOffer,onAssignRecipient}:{state:SharedSt
 
   </div>
    {createPortal(<aside className="blessing-feed" aria-label="小院祝福笺"><span><Sparkles size={13}/> 小院祝福笺 <b>{state.feed.length} 份温柔</b></span>{feedEntry?<p key={feedEntry.id} className="blessing-feed-line">{blessingLine(feedEntry)}</p>:<p>第一份被珍藏的祝福，正在来的路上。</p>}<span className="feed-dots" aria-hidden="true">•••</span></aside>,document.body)}
-  <dialog ref={blessingDialog} className={`blessing-modal tone-${activeBlessing?.tone||'gold'}`} onCancel={event=>{event.preventDefault();void finish(true);}} onClick={event=>{if(event.target===blessingDialog.current)void finish(true);}} aria-labelledby="blessing-title">
-   <button className="close-button" onClick={()=>void finish(true)} disabled={recipientBusy} aria-label="关闭保佑特效"><X size={20}/></button>
+  <dialog ref={blessingDialog} className={`blessing-modal tone-${activeBlessing?.tone||'gold'}`} onCancel={event=>{event.preventDefault();void finish(true);}} aria-labelledby="blessing-title">
+   <button type="button" className="close-button" onClick={()=>void finish(true)} disabled={recipientBusy} aria-label="关闭保佑特效"><X size={20}/></button>
    <div className="blessing-confetti" aria-hidden="true">{Array.from({length:18},(_,i)=><span key={i} style={{'--x':`${4+i*5.3}%`,'--delay':`${(i%5)*.13}s`,'--drift':`${(i%2?1:-1)*(20+i*3)}px`,'--rotate':`${i*29}deg`} as CSSProperties}>{i%3===0?<PawPrint size={19}/>:i%2?'✦':'♡'}</span>)}</div>
    <div className="blessing-halo"/>{activeBlessing&&<DeityForm id={activeBlessing.id} className="blessing-cat"/>}
    <span className="blessing-eyebrow">你的心意，猫猫神收到啦</span><h2 id="blessing-title">{activeBlessing?.title}<span>✦</span></h2><span className="blessing-subtitle">{activeAward&&activeAward.recipientSet!==false?`这一份温柔，送给「${activeAward.name}」`:"猫猫神悄悄送你一份保佑"}</span>

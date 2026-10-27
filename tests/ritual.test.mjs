@@ -2,13 +2,19 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {offerIncense,normalizeProgress,normalizeLikes,addCatLike,BLESSINGS} from '../src/ritual.ts';
 const samples=(...values)=>()=>{assert.ok(values.length,'Unexpected random draw');return values.shift();};
-test('the first blessing stays hidden until the required offering',()=>{
+test('every click can reward, including the first click',()=>{
+ const result=offerIncense(normalizeProgress(null),samples(.01,.4));
+ assert.ok(result.newBlessing);assert.equal(result.progress.incense,1);assert.equal(result.progress.sinceBlessing,0);
+});
+test('the tenth click guarantees a reward and the next cycle starts fresh',()=>{
  let progress=normalizeProgress(null);
- for(let i=1;i<67;i++){
-  const result=offerIncense(progress,()=>{throw new Error('No chance draw before the hidden threshold');});
+ for(let i=1;i<10;i++){
+  const result=offerIncense(progress,()=>.99);
   progress=result.progress;assert.equal(progress.incense,i);assert.equal(result.newBlessing,null);
  }
- const result=offerIncense(progress,()=>.4);assert.equal(result.progress.incense,67);assert.equal(result.progress.blessings,1);assert.ok(result.newBlessing);
+ const result=offerIncense(progress,samples(.4));assert.equal(result.progress.incense,10);assert.equal(result.progress.blessings,1);assert.ok(result.newBlessing);
+ progress=result.progress;for(let i=0;i<9;i++){const next=offerIncense(progress,()=>.99);assert.equal(next.newBlessing,null);progress=normalizeProgress(JSON.parse(JSON.stringify(next.progress)));}
+ assert.ok(offerIncense(progress,samples(.8)).newBlessing);
 });
 test('later offerings can either miss or award another random blessing',()=>{
  const start={incense:67,blessings:1,lastBlessingId:'peace'};
@@ -16,7 +22,7 @@ test('later offerings can either miss or award another random blessing',()=>{
  const won=offerIncense(missed.progress,samples(.01,.6));assert.ok(won.newBlessing);assert.equal(won.progress.blessings,2);assert.notEqual(won.newBlessing.id,'peace');
 });
 test('all blessing types can be drawn and consecutive rewards vary',()=>{
- const seen=new Set();for(let i=0;i<BLESSINGS.length;i++)seen.add(offerIncense({incense:66,blessings:0,lastBlessingId:null},()=>i/BLESSINGS.length).newBlessing.id);
+ const seen=new Set();for(let i=0;i<BLESSINGS.length;i++)seen.add(offerIncense({incense:0,blessings:0,lastBlessingId:null},samples(0,i/BLESSINGS.length)).newBlessing.id);
  assert.equal(seen.size,BLESSINGS.length);
  const again=offerIncense({incense:90,blessings:2,lastBlessingId:'peace'},samples(0,0));assert.notEqual(again.newBlessing.id,'peace');
 });

@@ -1,4 +1,5 @@
 import {createCommunityHandler,communityRoutes} from './community.mjs';
+import {createAdminHandler} from './admin.mjs';
 const MB=1024*1024;
 class ApiError extends Error{constructor(status,message){super(message);this.status=status;}}
 const fail=(status,message)=>{throw new ApiError(status,message);};
@@ -38,9 +39,11 @@ export function createHandler({backend,demos,allowedOrigins,ipSalt}){
   return Array.from(new Uint8Array(bytes),b=>b.toString(16).padStart(2,'0')).join('');
  }
  async function rpc(name,args){const {data,error}=await backend.rpc(name,args);if(error)dbError(error);return data;}
- const catDto=cat=>{const {imagePath,imagePaths,...fields}=cat;return {...fields,image:backend.photoUrl(imagePath),images:(imagePaths||[imagePath]).map(backend.photoUrl)};};
+ const catDto=cat=>{const {imagePath,imagePaths,...fields}=cat;const images=(imagePaths||[imagePath]).filter(Boolean).map(backend.photoUrl);return {...fields,image:images[0]||'',images};};
+ const demoDto=(cat,data)=>{const paths=data.imagePaths||data.demoPhotos?.[cat.id]||[];const hidden=data.hideDefault||data.demoHidden?.includes(cat.id);const images=[...(hidden?[]:[cat.image]),...paths.map(backend.photoUrl)];const {imagePaths,hideDefault,...fields}=cat;return {...fields,image:images[0]||'',images,commentCount:Number(cat.commentCount??data.demoCounts?.[cat.id]??0)};};
  const commentDto=comment=>{const {imagePaths,...fields}=comment;return {...fields,images:(imagePaths||[]).map(backend.photoUrl)};};
- const community=createCommunityHandler({backend,rpc,fail,readBody:limitedBody,imageMime,catDto,commentDto,demos});
+ const community=createCommunityHandler({backend,rpc,fail,readBody:limitedBody,imageMime,catDto,commentDto,demos,demoDto});
+ const management=createAdminHandler({backend,fail,readBody:limitedBody,demos,catDto,commentDto,demoDto});
  return async function handle(req){
   const origin=req.headers.get('origin');
   const headers={'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','Vary':'Origin','X-Content-Type-Options':'nosniff'};
@@ -53,14 +56,15 @@ export function createHandler({backend,demos,allowedOrigins,ipSalt}){
   try{
    const url=new URL(req.url);const marker='/miaomiao-api';const at=url.pathname.indexOf(marker);
    const route=at<0?url.pathname:url.pathname.slice(at+marker.length)||'/';
-   if(req.method==='GET'&&route==='/health')return response({status:'ok',version:2});
+   if(req.method==='GET'&&route==='/health')return response({status:'ok',version:3});
+   if(route.startsWith('/admin/'))return response(await management(req,route,await ipHash(req)));
    if(req.method==='GET'&&route==='/state')return response(await rpc('miaomiao_community_state',{p_actor:null}));
    if(req.method==='GET'&&route==='/cat-options')return response({cats:[...await rpc('miaomiao_cat_options',{}),...demos.map(({id,name,breed})=>({id,name,breed}))]});
    if(req.method==='GET'&&route==='/cats'){
     const offset=Number(url.searchParams.get('offset')||0);if(!Number.isSafeInteger(offset)||offset<0||offset>10000000)fail(400,'相册页码不正确');
     const data=await rpc('miaomiao_gallery',{p_offset:offset});
     const cats=data.cats.map(catDto);
-    if(data.nextOffset===null)cats.push(...demos.map(cat=>({...cat,images:[cat.image,...(data.demoPhotos?.[cat.id]||[]).map(backend.photoUrl)],commentCount:Number(data.demoCounts[cat.id]||0)})));
+    if(data.nextOffset===null)cats.push(...demos.map(cat=>demoDto(cat,data)));
     return response({cats,total:Number(data.uploadedTotal)+demos.length,nextOffset:data.nextOffset});
    }
    if(req.method==='GET'&&route==='/comments'){

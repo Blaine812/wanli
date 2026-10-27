@@ -42,3 +42,5 @@
 .blessing-feed p{font-size:12px;line-height:1.9;min-height:46px;margin-top:7px;color:#647658;overflow-wrap:anywhere}
 .blessing-feed .feed-dots{text-align:right;font-size:8px;color:#b49b67;letter-spacing:3px;line-height:1.1}
 @media(max-width:760px){.blessing-feed{right:max(14px,env(safe-area-inset-right));bottom:max(14px,env(safe-area-inset-bottom));width:238px;max-width:calc(100vw - 28px)}.blessing-feed>span:first-child{font-size:9px}.blessing-feed b{font-size:7px}.blessing-feed p{font-size:11px;min-height:42px;margin-top:5px}}
+
+.cat-photo-empty{min-height:250px;height:100%;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:#eef1e5;color:#9da98c;font-size:12px}.album-main>.cat-photo-empty{min-height:340px}

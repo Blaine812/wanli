@@ -1,7 +1,7 @@
 const MB=1024*1024;
 const uuid=value=>typeof value==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 export const communityRoutes=new Set(['/state','/like','/offer','/blessing-recipient','/media-start','/media-file','/media-finish','/media-cancel']);
-export function createCommunityHandler({backend,rpc,fail,readBody,imageMime,catDto,commentDto,demos}){
+export function createCommunityHandler({backend,rpc,fail,readBody,imageMime,catDto,commentDto,demos,demoDto}){
  async function json(req){if(!req.headers.get('content-type')?.startsWith('application/json'))fail(415,'提交格式不正确');let value;try{value=JSON.parse(new TextDecoder().decode(await readBody(req,16384)));}catch(error){if(error?.status)throw error;fail(400,'提交格式不正确');}if(!value||typeof value!=='object'||Array.isArray(value))fail(400,'提交格式不正确');return value;}
  return async(req,route,actor,hash)=>{
   if(route==='/media-file'){
@@ -38,6 +38,7 @@ export function createCommunityHandler({backend,rpc,fail,readBody,imageMime,catD
   if(result.comment)return {body:{comment:commentDto(result.comment)},status:201};
   const demo=demos.find(cat=>cat.id===result.catId);if(!demo)fail(503,'小院暂时有点忙，请稍后重试');
   const comments=await rpc('miaomiao_comments_get',{p_cat_id:demo.id});
-  return {body:{cat:{...demo,images:[demo.image,...result.imagePaths.map(backend.photoUrl)],commentCount:comments.comments.length}},status:201};
+  const gallery=await rpc('miaomiao_gallery',{p_offset:0});
+  return {body:{cat:demoDto({...demo,commentCount:comments.comments.length},gallery)},status:201};
  };
 }
