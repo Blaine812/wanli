@@ -4,6 +4,8 @@ let token='';
 if(!localPreview){try{token=sessionStorage.getItem('miaomiao.admin.session')||'';}catch{}}
 function remember(value:string){token=value;try{if(value)sessionStorage.setItem('miaomiao.admin.session',value);else sessionStorage.removeItem('miaomiao.admin.session');}catch{}}
 export async function adminApi<T>(path:string,body?:unknown):Promise<T>{
+ // Without a saved session the visitor is already known to be logged out.
+ if(!localPreview&&path==='/session'&&!token){const error=new Error('请先登录管理后台') as Error&{status:number};error.status=401;throw error;}
  let response:Response;
  try{
   if(localPreview)response=await fetch('/__review/admin'+path,{credentials:'same-origin',...(body===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})});
